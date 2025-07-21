@@ -158,6 +158,7 @@ In the cell below, inspect the overall shape of the dataframe:
 
 ```python
 # Your code here
+heroes_df.shape
 ```
 
 Now let's look at the info printout:
@@ -174,7 +175,14 @@ In the cell below, interpret that information. Do the data types line up with wh
 ```python
 # Replace None with appropriate text
 """
-None
+Contains 734 entries (rows) and 10 columns.
+
+Data Types: 2 columns are float64 (Height, Weight) and 8 are object (which usually means strings/text).
+
+Missing Values:
+Publisher has 719 non-null counts, meaning 734 - 719 = 15 missing values.
+Weight has 732 non-null counts, meaning 734 - 732 = 2 missing values.
+All other columns have 734 non-null counts, so they don't have missing values.
 """
 ```
 
@@ -185,6 +193,8 @@ Now, repeat the same process with `super_hero_powers.csv`. Name the dataframe `p
 
 ```python
 # Your code here (create more cells as needed)
+powers_df = pd.read_csv('super_hero_powers.csv', index_col=0)
+powers_df.head()
 ```
 
 The following code will check if it was loaded correctly:
@@ -250,7 +260,12 @@ Write your answer below, and explain how it relates to the information we have:
 ```python
 # Replace None with appropriate text
 """
-None
+Given that the missing values in the Publisher column seem to correspond to characters who aren't primarily from comic book publishers (like Chuck Norris, Godzilla, etc.), and there are only 15 such missing values out of 734 total records, the best approach here is to drop the rows with missing values in the Publisher column.
+
+This is because:
+1.Irrelevance to the question:These characters don't fit into the superhero by publisher distribution we're trying to find. Including them with an Unknown category might dilute the actual comic book publisher distribution or imply they belong to a comic publisher when they don't.
+2.Small impact:Losing 15 rows out of 734 is a very small portion of the dataset (about 2%). This won't significantly impact our analysis of the existing publishers.
+3.Accuracy:There's no reliable way to infer their comic book publisher, so dropping them maintains the accuracy of the publisher distribution for actual comic book characters.
 """
 ```
 
@@ -259,6 +274,16 @@ Now, implement the strategy to drop rows with missing values using code. (You ca
 
 ```python
 # Your code here
+
+# Drop rows where the 'Publisher' column has missing values (NaN)
+# 'subset' specifies which column(s) to check for NaN
+# 'inplace=True' modifies the DataFrame directly
+heroes_df.dropna(subset=['Publisher'], inplace=True)
+
+# Verify the change by checking the shape and info again
+print("New heroes_df shape:", heroes_df.shape)
+print("\nheroes_df info after dropping NaNs in 'Publisher':")
+heroes_df.info()
 ```
 
 Now there should be no missing values in the publisher column:
@@ -289,7 +314,9 @@ Identify those two cases below:
 ```python
 # Replace None with appropriate text
 """
-None
+The two cases of data entry issues are:
+1.Marvel Comics and Marvel: These refer to the same major comic book publisher. Marvel(9 entries) should likely be standardized to Marvel Comics(379 entries).
+2.DC Comics and DC Comics: The entry DC Comics (3 entries) has a leading whitespace. This is a common data entry error and should be cleaned to simply DC Comics(212 entries).
 """
 ```
 
@@ -298,6 +325,16 @@ Now, write some code to handle these cases. If you're not sure where to start, l
 
 ```python
 # Your code here
+
+# 1. Strip leading/trailing whitespace from all strings in the 'Publisher' column
+heroes_df["Publisher"] = heroes_df["Publisher"].str.strip()
+
+# 2. Replace 'Marvel' with 'Marvel Comics'
+# Using .replace() on the Series is efficient for this
+heroes_df["Publisher"] = heroes_df["Publisher"].replace({
+    "Marvel": "Marvel Comics",
+    "DC": "DC Comics"
+})
 ```
 
 Check your work below:
@@ -366,7 +403,19 @@ In the cell below, identify the shared key, and your strategy for joining the da
 ```python
 # Replace None with appropriate text
 """
-None
+Shared Key:The shared key between heroes_df and powers_df is the superhero's name.
+Specifically, it's the name column in heroes_df and the index of powers_df.
+
+Joining Strategy:
+1.What will one record represent after the join?
+    After joining, one record will still represent a single superhero. 
+    We want to combine all their descriptive information (like Gender, Height, Publisher) from heroes_df with all their superpower information (the True/False columns for each power) from powers_df into one comprehensive row.
+2.What type of join will we use (left/right/inner/outer)?
+    We should use a left join.
+    - Our primary DataFrame is heroes_df, as it contains the core superhero information (like Height and Gender) that we need for the second question.
+    -A left join will ensure that all superheroes from heroes_df are kept, and their corresponding superpower information from powers_df is brought in.
+    - If a superhero from heroes_df does not have an entry in powers_df, they will still be included in the merged DataFrame, but their superpower columns will have NaN values (which we'll handle by counting superpowers later). 
+    -This is important because we don't want to lose heroes just because they might not have powers listed.
 """
 ```
 
@@ -377,6 +426,18 @@ In the cell below, create a new dataframe called `heroes_and_powers_df` that con
 
 ```python
 # Your code here (create more cells as needed)
+
+
+
+powers_transposed = powers_df.T
+
+heroes_and_powers_df = pd.merge(
+    heroes_df, 
+    powers_transposed, 
+    left_on="name", 
+    right_index=True,
+    how="inner"  
+)
 ```
 
 Run the code below to check your work:
@@ -551,6 +612,18 @@ Don't worry if the rows or columns are in a different order, all that matters is
 
 ```python
 # Your code here (create more cells as needed)
+
+power_counts_by_publisher = heroes_and_powers_df.groupby("Publisher")[powers_df.index].sum()
+power_counts_filtered = power_counts_by_publisher.loc[["DC Comics", "Marvel Comics"]]
+
+# Transpose and reset index
+question_3_df = power_counts_filtered.T.reset_index()
+
+# Rename the index column
+question_3_df.rename(columns={"index": "Superpower Name"}, inplace=True)
+
+question_3_df.shape
+question_3_df.columns
 ```
 
 The code below checks that you have the correct dataframe structure:
@@ -631,8 +704,13 @@ Explain your question below:
 
 ```python
 # Replace None with appropriate text:
+# Replace None with appropriate text:
 """
-None
+My question is: How are eye color and hair color related in this dataset?
+
+I chose this question because it allows me to explore the relationship between two categorical variables,
+which might reveal interesting patterns or common combinations within the superhero data. I'll be able to use 
+frequency counts and possibly visualizations to show these relationships.
 """
 ```
 
@@ -644,7 +722,15 @@ Be sure to include thoughtful, well-labeled visualizations to back up your analy
 
 
 ```python
+# Check unique values and their counts for 'Eye color'
+print("Unique Eye Colors and Counts:")
+print(heroes_and_powers_df['Eye color'].value_counts())
+print("\nNumber of unique Eye Colors:", heroes_and_powers_df['Eye color'].nunique())
 
+# Check unique values and their counts for 'Hair color'
+print("\nUnique Hair Colors and Counts:")
+print(heroes_and_powers_df['Hair color'].value_counts())
+print("\nNumber of unique Hair Colors:", heroes_and_powers_df['Hair color'].nunique())
 ```
 
 
